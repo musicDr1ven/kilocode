@@ -130,6 +130,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [queuedMessage, setQueuedMessage] = useState<{ text: string; images: string[] } | null>(null)
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -499,6 +500,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		setSelectedImages([])
 		setClineAsk(undefined)
 		setEnableButtons(false)
+		setQueuedMessage(null) // Clear queued message when chat is reset
 		// Do not reset mode here as it should persist.
 		// setPrimaryButtonText(undefined)
 		// setSecondaryButtonText(undefined)
@@ -511,9 +513,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			if (text || images.length > 0) {
 				if (messagesRef.current.length === 0) {
+					// First message - always send as new task
+					setQueuedMessage(null) // Clear any existing queue when starting new task
 					vscode.postMessage({ type: "newTask", text, images })
 				} else if (clineAskRef.current) {
-					// Use clineAskRef.current
+					// There's an active ask - respond to it
 					switch (
 						clineAskRef.current // Use clineAskRef.current
 					) {
@@ -542,12 +546,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						// kilocode_change end
 						// There is no other case that a textfield should be enabled.
 					}
+				} else if (sendingDisabled) {
+					// Task is running but no active ask - queue the message
+					setQueuedMessage({ text, images })
+					vscode.postMessage({ type: "setQueuedPrompt", prompt: text })
+					// Don't call handleChatReset here - we want to keep the input visible
+					return
+				} else {
+					// No active task - send as new task
+					setQueuedMessage(null) // Clear any existing queue when starting new task
+					vscode.postMessage({ type: "newTask", text, images })
 				}
 
 				handleChatReset()
 			}
 		},
-		[handleChatReset], // messagesRef and clineAskRef are stable
+		[handleChatReset, sendingDisabled], // messagesRef and clineAskRef are stable
 	)
 
 	const handleSetChatBoxMessage = useCallback(
@@ -565,7 +579,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[inputValue, selectedImages],
 	)
 
-	const startNewTask = useCallback(() => vscode.postMessage({ type: "clearTask" }), [])
+	const startNewTask = useCallback(() => {
+		setQueuedMessage(null) // Clear queue when manually starting new task
+		vscode.postMessage({ type: "clearTask" })
+	}, [])
 
 	// This logic depends on the useEffect[messages] above to set clineAsk,
 	// after which buttons are shown and we then send an askResponse to the
@@ -763,6 +780,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			clearTimeout(timer)
 		}
 	}, [isHidden, sendingDisabled, enableButtons])
+
+	// Note: Auto-queue triggering is handled by the backend when tasks become idle
+	// Frontend only manages the visual queue state
+
+	// Clear queue when task changes (switching between different tasks)
+	useEffect(() => {
+		if (task?.ts) {
+			setQueuedMessage(null)
+		}
+	}, [task?.ts])
 
 	const visibleMessages = useMemo(() => {
 		const newVisibleMessages = modifiedMessages.filter((message) => {
@@ -1610,6 +1637,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
 				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				queuedMessage={queuedMessage}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {

@@ -60,6 +60,7 @@ interface ChatTextAreaProps {
 	mode: Mode
 	setMode: (value: Mode) => void
 	modeShortcutText: string
+	queuedMessage?: { text: string; images: string[] } | null
 }
 
 const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
@@ -79,6 +80,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			mode,
 			setMode,
 			modeShortcutText,
+			queuedMessage,
 		},
 		ref,
 	) => {
@@ -542,11 +544,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				if (event.key === "Enter" && !event.shiftKey && !isComposing) {
 					event.preventDefault()
 
-					if (!sendingDisabled) {
-						// Reset history navigation state when sending
-						resetHistoryNavigation()
-						onSend()
-					}
+					// Always allow Enter to trigger onSend - the queue logic will handle routing
+					resetHistoryNavigation()
+					onSend()
 				}
 
 				if (event.key === "Backspace" && !isComposing) {
@@ -1443,10 +1443,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							disabled={shouldDisableImages}
 							onClick={onSelectImages}
 						/>
+						{queuedMessage && (
+							<IconButton
+								iconClass="codicon-clock"
+								title="Message queued - will send when task completes"
+								disabled={true}
+								className="text-yellow-500"
+							/>
+						)}
 						<IconButton
 							iconClass="codicon-send"
-							title={t("chat:sendMessage")}
-							disabled={sendingDisabled}
+							title={sendingDisabled ? "Queue message" : t("chat:sendMessage")}
+							disabled={false}
 							onClick={onSend}
 						/>
 					</div>
