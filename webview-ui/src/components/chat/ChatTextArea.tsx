@@ -53,7 +53,8 @@ interface ChatTextAreaProps {
 	placeholderText: string
 	selectedImages: string[]
 	setSelectedImages: React.Dispatch<React.SetStateAction<string[]>>
-	onSend: () => void
+	onSend: (isInterjection?: boolean) => void
+	onInterjection?: (text: string, images: string[]) => void
 	onSelectImages: () => void
 	shouldDisableImages: boolean
 	onHeightChange?: (height: number) => void
@@ -74,6 +75,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			selectedImages,
 			setSelectedImages,
 			onSend,
+			onInterjection,
 			onSelectImages,
 			shouldDisableImages,
 			onHeightChange,
@@ -544,9 +546,31 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				if (event.key === "Enter" && !event.shiftKey && !isComposing) {
 					event.preventDefault()
 
-					// Always allow Enter to trigger onSend - the queue logic will handle routing
-					resetHistoryNavigation()
-					onSend()
+					// Check for Alt+Enter interjection (cancel current task and send immediately)
+					if (event.altKey && sendingDisabled) {
+						console.log("🔥 Interjection triggered - canceling task and queuing message")
+						const messageText = inputValue.trim()
+						const messageImages = [...selectedImages]
+
+						if (messageText || messageImages.length > 0) {
+							// Cancel current task first
+							vscode.postMessage({ type: "cancelTask" })
+
+							// Use the onInterjection callback to handle state-based waiting
+							if (onInterjection) {
+								onInterjection(messageText, messageImages)
+							}
+
+							// Clear input immediately to show action was registered
+							setInputValue("")
+							setSelectedImages([])
+						}
+						resetHistoryNavigation()
+					} else {
+						// Normal Enter behavior - queue logic will handle routing
+						resetHistoryNavigation()
+						onSend(false) // Pass false for normal send
+					}
 				}
 
 				if (event.key === "Backspace" && !isComposing) {
@@ -1446,16 +1470,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						{queuedMessage && (
 							<IconButton
 								iconClass="codicon-clock"
-								title="Message queued - will send when task completes"
+								title={`Message queued: "${queuedMessage.text.substring(0, 50)}${queuedMessage.text.length > 50 ? "..." : ""}" - will send when task completes`}
 								disabled={true}
-								className="text-yellow-500"
+								className="text-yellow-500 animate-pulse"
+							/>
+						)}
+						{/* Show waiting indicator for interjection */}
+						{sendingDisabled && inputValue === "" && (
+							<IconButton
+								iconClass="codicon-loading codicon-modifier-spin"
+								title="Waiting for task to cancel..."
+								disabled={true}
+								className="text-blue-500"
 							/>
 						)}
 						<IconButton
 							iconClass="codicon-send"
 							title={sendingDisabled ? "Queue message" : t("chat:sendMessage")}
 							disabled={false}
-							onClick={onSend}
+							onClick={() => onSend(false)}
 						/>
 					</div>
 				</div>

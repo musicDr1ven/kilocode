@@ -131,6 +131,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
 	const [queuedMessage, setQueuedMessage] = useState<{ text: string; images: string[] } | null>(null)
+	const [pendingInterjection, setPendingInterjection] = useState<{ text: string; images: string[] } | null>(null)
+	const [isWaitingForCancel, setIsWaitingForCancel] = useState(false)
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -508,16 +510,27 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	}, [])
 
 	const handleSendMessage = useCallback(
-		(text: string, images: string[]) => {
+		(text: string, images: string[], isInterjection = false) => {
 			text = text.trim()
+
+			console.log("📤 handleSendMessage called:", {
+				text: text.substring(0, 50),
+				hasImages: images.length > 0,
+				isInterjection,
+				messagesLength: messagesRef.current.length,
+				clineAsk: clineAskRef.current,
+				sendingDisabled,
+			})
 
 			if (text || images.length > 0) {
 				if (messagesRef.current.length === 0) {
 					// First message - always send as new task
+					console.log("🎯 First message - sending as new task")
 					setQueuedMessage(null) // Clear any existing queue when starting new task
 					vscode.postMessage({ type: "newTask", text, images })
 				} else if (clineAskRef.current) {
 					// There's an active ask - respond to it
+					console.log("🎯 Active ask detected - responding to:", clineAskRef.current)
 					switch (
 						clineAskRef.current // Use clineAskRef.current
 					) {
@@ -546,23 +559,48 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						// kilocode_change end
 						// There is no other case that a textfield should be enabled.
 					}
-				} else if (sendingDisabled) {
-					// Task is running but no active ask - queue the message
+				} else if (sendingDisabled && !isInterjection) {
+					// Task is running but no active ask - queue the message (unless it's an interjection)
+					console.log("🎯 Task running - queuing message:", text.substring(0, 50))
 					setQueuedMessage({ text, images })
 					vscode.postMessage({ type: "setQueuedPrompt", prompt: text })
 					// Don't call handleChatReset here - we want to keep the input visible
 					return
+				} else if (isInterjection) {
+					// Interjection: always send as message response to continue current conversation
+					// Even if there's no active ask, we want to continue the chat, not start a new task
+					console.log(
+						"🎯 Interjection - sending as message response to continue chat:",
+						text.substring(0, 50),
+					)
+					setQueuedMessage(null) // Clear any existing queue
+					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
+				} else if (messagesRef.current.length > 0) {
+					// Has existing messages but no active ask - send as message response to continue conversation
+					console.log("🎯 Continuing conversation - sending as message response:", text.substring(0, 50))
+					setQueuedMessage(null) // Clear any existing queue
+					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
 				} else {
-					// No active task - send as new task
+					// No messages at all - send as new task
+					console.log("🎯 No messages - sending as new task:", text.substring(0, 50))
 					setQueuedMessage(null) // Clear any existing queue when starting new task
 					vscode.postMessage({ type: "newTask", text, images })
 				}
 
+				console.log("🎯 Calling handleChatReset")
 				handleChatReset()
+			} else {
+				console.log("🎯 No text or images - not sending")
 			}
 		},
 		[handleChatReset, sendingDisabled], // messagesRef and clineAskRef are stable
 	)
+
+	const handleInterjection = useCallback((text: string, images: string[]) => {
+		console.log("🎯 Setting up interjection:", { text: text.substring(0, 50), hasImages: images.length > 0 })
+		setPendingInterjection({ text, images })
+		setIsWaitingForCancel(true)
+	}, [])
 
 	const handleSetChatBoxMessage = useCallback(
 		(text: string, images: string[]) => {
@@ -781,8 +819,90 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [isHidden, sendingDisabled, enableButtons])
 
-	// Note: Auto-queue triggering is handled by the backend when tasks become idle
-	// Frontend only manages the visual queue state
+	// Watch for when the chatbox becomes available for user input
+	// This is the exact same condition used in ChatTextArea for enabling the send button
+	useEffect(() => {
+		const chatboxAvailable = !sendingDisabled && !isProfileDisabled
+		const hasActiveAsk = !!clineAsk && enableButtons
+		// completion_result is a state where user CAN type and send (to provide feedback)
+		const canUserTypeAndSendDespiteAsk = clineAsk === "completion_result"
+		const canUserTypeAndSend = chatboxAvailable && (!hasActiveAsk || canUserTypeAndSendDespiteAsk)
+
+		// Log EVERY state change to see when chatbox becomes available
+		console.log("🎯 CHATBOX STATE CHANGE:", {
+			timestamp: new Date().toISOString(),
+			hasQueuedMessage: !!queuedMessage,
+			sendingDisabled,
+			isProfileDisabled,
+			clineAsk,
+			enableButtons,
+			isStreaming,
+			chatboxAvailable,
+			hasActiveAsk,
+			canUserTypeAndSend,
+			queuedText: queuedMessage?.text?.substring(0, 50),
+		})
+
+		// Specifically log when chatbox becomes available
+		if (canUserTypeAndSend) {
+			console.log("🎯 CHATBOX IS NOW AVAILABLE FOR USER INPUT! User can type and submit messages")
+		} else {
+			console.log("🎯 CHATBOX IS DISABLED - User cannot type/submit", {
+				reason: !chatboxAvailable ? "chatbox not available" : "has active ask",
+			})
+		}
+
+		// When the chatbox becomes available for user input AND we have a queued message
+		if (queuedMessage && canUserTypeAndSend) {
+			console.log(
+				"🎯 TRIGGERING AUTO-SEND - Chatbox available + queued message:",
+				queuedMessage.text.substring(0, 50),
+			)
+			const { text, images } = queuedMessage
+			setQueuedMessage(null) // Clear frontend queue first
+			vscode.postMessage({ type: "setQueuedPrompt", prompt: "" }) // Clear backend queue
+			handleSendMessage(text, images)
+		}
+	}, [queuedMessage, sendingDisabled, isProfileDisabled, clineAsk, enableButtons, isStreaming, handleSendMessage])
+
+	// Handle interjection state-based waiting - use same conditions as chatbox availability
+	useEffect(() => {
+		const chatboxAvailable = !sendingDisabled && !isProfileDisabled
+		const hasActiveAsk = !!clineAsk && enableButtons
+		// completion_result is a state where user CAN type and send (to provide feedback)
+		const canUserTypeAndSendDespiteAsk = clineAsk === "completion_result"
+		const canUserTypeAndSend = chatboxAvailable && (!hasActiveAsk || canUserTypeAndSendDespiteAsk)
+
+		if (pendingInterjection) {
+			console.log("🎯 Interjection state check:", {
+				hasPendingInterjection: !!pendingInterjection,
+				pendingText: pendingInterjection.text.substring(0, 50),
+				isWaitingForCancel,
+				sendingDisabled,
+				isProfileDisabled,
+				clineAsk,
+				enableButtons,
+				isStreaming,
+				chatboxAvailable,
+				hasActiveAsk,
+				canUserTypeAndSend,
+				willSend: canUserTypeAndSend && isWaitingForCancel,
+			})
+		}
+
+		// For interjections, we send immediately when cancel is processed (sendingDisabled becomes false)
+		// We don't wait for completion_result like queued messages do
+		if (pendingInterjection && !sendingDisabled && isWaitingForCancel) {
+			console.log(
+				"🎯 Cancel completed, sending interjection immediately:",
+				pendingInterjection.text.substring(0, 50),
+			)
+			const { text, images } = pendingInterjection
+			setPendingInterjection(null)
+			setIsWaitingForCancel(false)
+			handleSendMessage(text, images, true) // Send as interjection
+		}
+	}, [pendingInterjection, sendingDisabled, isWaitingForCancel, handleSendMessage])
 
 	// Clear queue when task changes (switching between different tasks)
 	useEffect(() => {
@@ -1636,7 +1756,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onSend={(isInterjection = false) => handleSendMessage(inputValue, selectedImages, isInterjection)}
+				onInterjection={handleInterjection}
 				queuedMessage={queuedMessage}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
