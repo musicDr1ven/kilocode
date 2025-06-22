@@ -25,9 +25,9 @@ suite("Kilo Code Task", () => {
 
 		assert.ok(
 			!!messages.find(
-				({ say, text }) => (say === "completion_result" || say === "text") && text?.includes("My name is Roo"),
+				({ say, text }) => (say === "completion_result" || say === "text") && text?.includes("My name is Kilo"),
 			),
-			`Completion should include "My name is Roo"`,
+			`Completion should include "My name is Kilo"`,
 		)
 	})
 })
