@@ -1,9 +1,9 @@
 const SIZE_LIMIT_AS_CONTEXT_WINDOW_FRACTION = 0.2
+const TOKENS_PER_CHARACTER = 3
 
 function tokenEstimate(text: string) {
-	// Assume 3 characters per token.
 	// Very crude metric, but it is fast to compute and scales linearly.
-	return Math.ceil(text.length / 3)
+	return text.length / TOKENS_PER_CHARACTER
 }
 function computeLinesToKeep(lines: string[], maxTokens: number) {
 	let currentEstimate = 0
@@ -21,7 +21,7 @@ function computeLinesToKeep(lines: string[], maxTokens: number) {
 }
 
 export function truncateIfNeeded(text: string, contextWindow: number) {
-	const maxTokens = Math.floor(SIZE_LIMIT_AS_CONTEXT_WINDOW_FRACTION * contextWindow)
+	const maxTokens = SIZE_LIMIT_AS_CONTEXT_WINDOW_FRACTION * contextWindow
 	if (tokenEstimate(text) <= maxTokens) {
 		return text
 	}
