@@ -28,11 +28,8 @@ export function truncateIfNeeded(text: string, contextWindow: number) {
 
 	const lines = text.split("\n")
 	let linesToKeep = computeLinesToKeep(lines, maxTokens)
-
-	console.warn(`Truncating from ${lines.length} lines to ${linesToKeep} lines:
-${text.slice(0, 100)} ..........`)
-
 	const truncatedText = lines.slice(0, linesToKeep).join("\n")
+
 	return `**Important:** The output below was truncated from ${lines.length} lines to ${linesToKeep} lines due to size limits and is therefore *incomplete*! You *must* notify the user of this!
 
 ${truncatedText}`

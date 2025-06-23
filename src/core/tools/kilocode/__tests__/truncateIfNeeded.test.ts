@@ -1,15 +1,6 @@
 import { truncateIfNeeded } from "../truncateIfNeeded"
 
 describe("truncateIfNeeded", () => {
-	// Mock console.warn to avoid noise in test output
-	const originalWarn = console.warn
-	beforeEach(() => {
-		console.warn = jest.fn()
-	})
-	afterEach(() => {
-		console.warn = originalWarn
-	})
-
 	describe("when text fits within context window", () => {
 		it("should return original text when it fits within 20% of context window", () => {
 			const text = "Hello world"
