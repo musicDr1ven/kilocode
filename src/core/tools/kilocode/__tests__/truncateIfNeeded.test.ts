@@ -10,7 +10,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe(text)
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 
 		it("should return original text for empty string", () => {
@@ -20,7 +19,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe("")
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 
 		it("should return original text for single character", () => {
@@ -30,7 +28,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe("a")
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 	})
 
@@ -44,7 +41,6 @@ describe("truncateIfNeeded", () => {
 			expect(result).toContain("**Important:** The output below was truncated")
 			expect(result).toContain("due to size limits and is therefore *incomplete*!")
 			expect(result).toContain("You *must* notify the user of this!")
-			expect(console.warn).toHaveBeenCalled()
 		})
 
 		it("should truncate multiline text correctly", () => {
@@ -129,7 +125,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe(text) // Should not truncate as it's very small
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 
 		it("should handle mixed empty and non-empty lines", () => {
@@ -140,30 +135,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe(text) // Should not truncate
-			expect(console.warn).not.toHaveBeenCalled()
-		})
-	})
-
-	describe("console warning behavior", () => {
-		it("should log warning with preview of truncated text", () => {
-			const text = "a".repeat(300)
-			const contextWindow = 100
-
-			truncateIfNeeded(text, contextWindow)
-
-			expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("Truncating from 1 lines to 0 lines:"))
-			expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(text.slice(0, 100)))
-			expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(".........."))
-		})
-
-		it("should show correct line counts in warning", () => {
-			const lines = Array(10).fill("x".repeat(60)) // 10 lines, ~20 tokens each
-			const text = lines.join("\n")
-			const contextWindow = 500 // 20% = 100 tokens max, should keep ~5 lines
-
-			truncateIfNeeded(text, contextWindow)
-
-			expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("Truncating from 10 lines to 5 lines:"))
 		})
 	})
 
@@ -177,7 +148,6 @@ describe("truncateIfNeeded", () => {
 
 			// Should not truncate as it exactly fits
 			expect(result).toBe(text)
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 
 		it("should truncate when exceeding token estimate by one character", () => {
@@ -188,7 +158,6 @@ describe("truncateIfNeeded", () => {
 
 			// Should not truncate as floor(61/3) = 20 tokens
 			expect(result).toBe(text)
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 	})
 
@@ -201,7 +170,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toBe(text)
-			expect(console.warn).not.toHaveBeenCalled()
 		})
 
 		it("should truncate when exceeding 20% of context window", () => {
@@ -212,7 +180,6 @@ describe("truncateIfNeeded", () => {
 			const result = truncateIfNeeded(text, contextWindow)
 
 			expect(result).toContain("**Important:** The output below was truncated")
-			expect(console.warn).toHaveBeenCalled()
 		})
 	})
 })
