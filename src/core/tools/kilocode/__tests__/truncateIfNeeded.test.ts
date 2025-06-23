@@ -151,13 +151,13 @@ describe("truncateIfNeeded", () => {
 		})
 
 		it("should truncate when exceeding token estimate by one character", () => {
-			const text = "abc".repeat(20) + "d" // 61 chars = ~20.33 tokens, rounded down to 20
+			const text = "abc".repeat(20) + "d" // 61 chars = ~20.33 tokens, rounded up to 21
 			const contextWindow = 100 // 20% = 20 tokens max
 
 			const result = truncateIfNeeded(text, contextWindow)
 
-			// Should not truncate as floor(61/3) = 20 tokens
-			expect(result).toBe(text)
+			// Should truncate as ceil(61/3) = 21 tokens
+			expect(result).toContain("**Important:** The output below was truncated from 1 lines to 0 lines")
 		})
 	})
 
