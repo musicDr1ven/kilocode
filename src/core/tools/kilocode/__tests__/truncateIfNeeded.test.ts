@@ -136,6 +136,15 @@ describe("truncateIfNeeded", () => {
 
 			expect(result).toBe(text) // Should not truncate
 		})
+
+		it("should handle many lines of a single character", () => {
+			const text = "a\n".repeat(50)
+			const contextWindow = 30
+
+			const result = truncateIfNeeded(text, contextWindow)
+
+			expect(result).toContain("**Important:** The output below was truncated")
+		})
 	})
 
 	describe("token estimation accuracy", () => {
