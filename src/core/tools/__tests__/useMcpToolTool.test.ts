@@ -52,6 +52,13 @@ describe("useMcpToolTool", () => {
 			ask: jest.fn(),
 			lastMessageTs: 123456789,
 			providerRef: mockProviderRef,
+			api: {
+				getModel: jest.fn().mockReturnValue({
+					info: {
+						contextWindow: 32_000,
+					},
+				}),
+			},
 		}
 	})
 
