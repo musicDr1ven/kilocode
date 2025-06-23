@@ -100,7 +100,7 @@ describe("truncateIfNeeded", () => {
 	describe("edge cases", () => {
 		it("should handle very small context window", () => {
 			const text = "Hello world"
-			const contextWindow = 1 // 20% = 0.2 tokens, floored to 0
+			const contextWindow = 1
 
 			const result = truncateIfNeeded(text, contextWindow)
 
@@ -160,12 +160,12 @@ describe("truncateIfNeeded", () => {
 		})
 
 		it("should truncate when exceeding token estimate by one character", () => {
-			const text = "abc".repeat(20) + "d" // 61 chars = ~20.33 tokens, rounded up to 21
+			const text = "abc".repeat(20) + "d" // 61 chars = ~20.33 tokens
 			const contextWindow = 100 // 20% = 20 tokens max
 
 			const result = truncateIfNeeded(text, contextWindow)
 
-			// Should truncate as ceil(61/3) = 21 tokens
+			// Should truncate as 61/3 > 21 tokens
 			expect(result).toContain("**Important:** The output below was truncated from 1 lines to 0 lines")
 		})
 	})
