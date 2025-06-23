@@ -3,7 +3,7 @@ const SIZE_LIMIT_AS_CONTEXT_WINDOW_FRACTION = 0.2
 function tokenEstimate(text: string) {
 	// Assume 3 characters per token.
 	// Very crude metric, but it is fast to compute and scales linearly.
-	return Math.floor(text.length / 3)
+	return Math.ceil(text.length / 3)
 }
 function computeLinesToKeep(lines: string[], maxTokens: number) {
 	let currentEstimate = 0
