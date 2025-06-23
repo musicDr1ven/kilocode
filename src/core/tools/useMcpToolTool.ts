@@ -5,7 +5,7 @@ import { ClineAskUseMcpServer } from "../../shared/ExtensionMessage"
 import { McpExecutionStatus } from "@roo-code/types"
 import { t } from "../../i18n"
 import { truncateIfNeeded } from "./kilocode/truncateIfNeeded" // kilocode_change
-import { McpToolCallResponse } from "../../shared/mcp"
+import { McpToolCallResponse } from "../../shared/mcp" // kilocode_change
 
 interface McpToolParams {
 	server_name?: string
@@ -92,8 +92,8 @@ async function sendExecutionStatus(cline: Task, status: McpExecutionStatus): Pro
 }
 
 function processToolContent(
-	toolResult: McpToolCallResponse /*kilocode_change: type added*/,
-	contextWindow: number /*kilocode_change: added*/,
+	toolResult: McpToolCallResponse, // kilocode_change: type added
+	contextWindow: number, // kilocode_change: added
 ): string {
 	if (!toolResult?.content || toolResult.content.length === 0) {
 		return ""

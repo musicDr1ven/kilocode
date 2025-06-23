@@ -52,6 +52,7 @@ describe("useMcpToolTool", () => {
 			ask: jest.fn(),
 			lastMessageTs: 123456789,
 			providerRef: mockProviderRef,
+			// kilocode_change start
 			api: {
 				getModel: jest.fn().mockReturnValue({
 					info: {
@@ -61,6 +62,7 @@ describe("useMcpToolTool", () => {
 				createMessage: jest.fn(),
 				countTokens: jest.fn().mockResolvedValue(100),
 			},
+			// kilocode_change end
 		}
 	})
 
