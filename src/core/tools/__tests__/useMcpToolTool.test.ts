@@ -58,6 +58,8 @@ describe("useMcpToolTool", () => {
 						contextWindow: 32_000,
 					},
 				}),
+				createMessage: jest.fn(),
+				countTokens: jest.fn().mockResolvedValue(100),
 			},
 		}
 	})
