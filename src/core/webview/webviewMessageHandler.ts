@@ -23,7 +23,7 @@ import { openImage, saveImage } from "../../integrations/misc/image-handler"
 import { selectImages } from "../../integrations/misc/process-images"
 import { getTheme } from "../../integrations/theme/getTheme"
 import { discoverChromeHostUrl, tryChromeHostUrl } from "../../services/browser/browserDiscovery"
-import { searchWorkspaceFiles } from "../../services/search/file-search"
+import { searchWorkspaceFiles, searchAllWorkspaceFiles } from "../../services/search/file-search"
 import { fileExistsAtPath } from "../../utils/fs"
 import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
 import { showSystemNotification } from "../../integrations/notifications" // kilocode_change
@@ -1202,27 +1202,8 @@ export const webviewMessageHandler = async (
 		}
 		// kilocode_change end
 		case "searchFiles": {
-			const workspacePath = getWorkspacePath()
-
-			if (!workspacePath) {
-				// Handle case where workspace path is not available
-				await provider.postMessageToWebview({
-					type: "fileSearchResults",
-					results: [],
-					requestId: message.requestId,
-					error: "No workspace path available",
-				})
-				break
-			}
 			try {
-				// Call file search service with query from message
-				const results = await searchWorkspaceFiles(
-					message.query || "",
-					workspacePath,
-					20, // Use default limit, as filtering is now done in the backend
-				)
-
-				// Send results back to webview
+				const results = await searchAllWorkspaceFiles(message.query || "", 20)
 				await provider.postMessageToWebview({
 					type: "fileSearchResults",
 					results,
@@ -1230,8 +1211,6 @@ export const webviewMessageHandler = async (
 				})
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
-
-				// Send error response to webview
 				await provider.postMessageToWebview({
 					type: "fileSearchResults",
 					results: [],
