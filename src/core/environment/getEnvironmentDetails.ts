@@ -22,6 +22,35 @@ import { Task } from "../task/Task"
 import { OpenRouterHandler } from "../../api/providers/openrouter"
 import { KilocodeOpenrouterHandler } from "../../api/providers/kilocode-openrouter"
 
+/**
+ * Process files for a single workspace path, handling desktop detection and file listing
+ */
+async function processWorkspaceFiles(
+	workspacePath: string,
+	maxFiles: number,
+	cline: Task,
+	state: any,
+): Promise<string> {
+	const isDesktop = arePathsEqual(workspacePath, path.join(os.homedir(), "Desktop"))
+
+	if (isDesktop) {
+		return "(Desktop files not shown automatically. Use list_files to explore if needed.)"
+	}
+
+	const [files, didHitLimit] = await listFiles(workspacePath, true, maxFiles)
+	const { showRooIgnoredFiles = true } = state ?? {}
+
+	const result = formatResponse.formatFilesList(
+		workspacePath,
+		files,
+		didHitLimit,
+		cline.rooIgnoreController,
+		showRooIgnoredFiles,
+	)
+
+	return result
+}
+
 export async function getEnvironmentDetails(cline: Task, includeFileDetails: boolean = false) {
 	let details = ""
 
@@ -263,27 +292,9 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		if (allWorkspacePaths.length <= 1) {
 			// Single workspace - keep existing behavior
 			details += `\n\n# Current Workspace Directory (${cline.cwd.toPosix()}) Files\n`
-			const isDesktop = arePathsEqual(cline.cwd, path.join(os.homedir(), "Desktop"))
-
-			if (isDesktop) {
-				// Don't want to immediately access desktop since it would show
-				// permission popup.
-				details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
-			} else {
-				const maxFiles = maxWorkspaceFiles ?? 200
-				const [files, didHitLimit] = await listFiles(cline.cwd, true, maxFiles)
-				const { showRooIgnoredFiles = true } = state ?? {}
-
-				const result = formatResponse.formatFilesList(
-					cline.cwd,
-					files,
-					didHitLimit,
-					cline.rooIgnoreController,
-					showRooIgnoredFiles,
-				)
-
-				details += result
-			}
+			const maxFiles = maxWorkspaceFiles ?? 200
+			const result = await processWorkspaceFiles(cline.cwd, maxFiles, cline, state)
+			details += result
 		} else {
 			// Multi-workspace - show each workspace as separate section
 			details += `\n\n# Multi-Root Workspace Files\n`
@@ -293,24 +304,8 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 				const workspaceName = path.basename(workspacePath)
 				details += `\n## Workspace: ${workspaceName} (${workspacePath.toPosix()})\n`
 
-				const isDesktop = arePathsEqual(workspacePath, path.join(os.homedir(), "Desktop"))
-
-				if (isDesktop) {
-					details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
-				} else {
-					const [files, didHitLimit] = await listFiles(workspacePath, true, maxFilesPerWorkspace)
-					const { showRooIgnoredFiles = true } = state ?? {}
-
-					const result = formatResponse.formatFilesList(
-						workspacePath,
-						files,
-						didHitLimit,
-						cline.rooIgnoreController,
-						showRooIgnoredFiles,
-					)
-
-					details += result
-				}
+				const result = await processWorkspaceFiles(workspacePath, maxFilesPerWorkspace, cline, state)
+				details += result
 			}
 		}
 	}

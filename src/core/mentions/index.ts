@@ -24,6 +24,11 @@ export async function openMention(mention?: string): Promise<void> {
 		return
 	}
 
+	const cwd = getWorkspacePath()
+	if (!cwd) {
+		return
+	}
+
 	if (mention.startsWith("/")) {
 		// Slice off the leading slash and unescape any spaces in the path
 		const relPath = unescapeSpaces(mention.slice(1))
@@ -39,10 +44,6 @@ export async function openMention(mention?: string): Promise<void> {
 			}
 		} else {
 			// Fallback to default workspace if not found in any workspace
-			const cwd = getWorkspacePath()
-			if (!cwd) {
-				return
-			}
 			const absPath = path.resolve(cwd, relPath)
 			if (mention.endsWith("/")) {
 				vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(absPath))
