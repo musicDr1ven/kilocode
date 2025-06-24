@@ -18,11 +18,11 @@ import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
 import Thumbnails from "../common/Thumbnails"
 
 import { TaskActions } from "./TaskActions"
-import { ContextWindowProgress } from "./ContextWindowProgress"
 import { TaskTimeline } from "./TaskTimeline"
 import { mentionRegexGlobal } from "@roo/context-mentions"
 
 import { vscode } from "@/utils/vscode" // kilocode_change: pull slash commands from Cline
+import { ContextWindowProgress } from "../chat/ContextWindowProgress"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
