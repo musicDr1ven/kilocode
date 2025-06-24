@@ -55,13 +55,13 @@ describe("useMcpToolTool", () => {
 			providerRef: mockProviderRef,
 			// kilocode_change start
 			api: {
-				getModel: jest.fn().mockReturnValue({
+				getModel: vi.fn().mockReturnValue({
 					info: {
 						contextWindow: 32_000,
 					},
 				}),
-				createMessage: jest.fn(),
-				countTokens: jest.fn().mockResolvedValue(100),
+				createMessage: vi.fn(),
+				countTokens: vi.fn().mockResolvedValue(100),
 			},
 			// kilocode_change end
 		}
