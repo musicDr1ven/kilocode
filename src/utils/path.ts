@@ -115,3 +115,30 @@ export const getWorkspacePath = (defaultCwdPath = "") => {
 	}
 	return cwdPath
 }
+
+export const getAllWorkspacePaths = (): string[] => {
+	return vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) || []
+}
+
+export const getWorkspaceForPath = (filePath: string): vscode.WorkspaceFolder | undefined => {
+	if (!vscode.workspace.workspaceFolders) return undefined
+	const absolutePath = path.resolve(filePath)
+	return vscode.workspace.workspaceFolders.find((folder) => absolutePath.startsWith(folder.uri.fsPath))
+}
+
+export const resolvePathInWorkspace = (relativePath: string, workspaceName?: string): string => {
+	const workspaceFolders = vscode.workspace.workspaceFolders
+	if (!workspaceFolders) return relativePath
+
+	if (workspaceName) {
+		const targetWorkspace = workspaceFolders.find(
+			(folder) => folder.name === workspaceName || path.basename(folder.uri.fsPath) === workspaceName,
+		)
+		if (targetWorkspace) {
+			return path.resolve(targetWorkspace.uri.fsPath, relativePath)
+		}
+	}
+
+	// Default to first workspace for backward compatibility
+	return path.resolve(workspaceFolders[0].uri.fsPath, relativePath)
+}
