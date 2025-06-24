@@ -43,6 +43,8 @@ import {
 	insertSlashCommand,
 	validateSlashCommand,
 } from "@/utils/slash-commands"
+import { ProviderSettings } from "@roo-code/types"
+import { ModelSelector } from "./ModelSelector"
 // kilocode_change end
 
 interface ChatTextAreaProps {
@@ -1395,14 +1397,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								}}
 							/>
 						</div>
+						{/* kilocode_change end */}
 
-						{/* kilocode_change begin: Model display */}
-						<div
-							className="flex items-center mx-2 overflow-hidden"
-							title={`${selectedProvider}:${selectedModelId}`}>
-							<span className="text-xs text-vscode-descriptionForeground opacity-70 truncate">
-								{selectedProvider}:{selectedModelId}
-							</span>
+						{/* kilocode_change begin: Model Selector */}
+						<div className="flex items-center overflow-hidden">
+							<ModelSelector
+								currentApiConfigName={currentApiConfigName}
+								apiConfiguration={apiConfiguration as ProviderSettings}
+								fallbackText={`${selectedProvider}:${selectedModelId}`}
+							/>
 						</div>
 						{/* kilocode_change end */}
 					</div>

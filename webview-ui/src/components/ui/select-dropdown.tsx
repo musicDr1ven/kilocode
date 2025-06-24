@@ -192,7 +192,7 @@ export const SelectDropdown = React.memo(
 						title={title}
 						data-testid="dropdown-trigger"
 						className={cn(
-							"w-full min-w-0 max-w-full inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
+							"w-full min-w-0 max-w-full inline-flex items-center gap-1.5 relative whitespace-nowrap pl-1.5 pr-3 py-1  text-xs",
 							"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground w-auto",
 							"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 							disabled
