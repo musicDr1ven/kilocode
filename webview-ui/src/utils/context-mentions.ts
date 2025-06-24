@@ -98,6 +98,7 @@ export enum ContextMenuOptionType {
 	NoResults = "noResults",
 	Mode = "mode", // Add mode type
 	Image = "image", // kilocode_change
+	WorkspaceHeader = "workspaceHeader", // Add workspace header type
 }
 
 export interface ContextMenuQueryItem {
@@ -256,8 +257,10 @@ export function getContextMenuOptions(
 
 	const gitMatches = matchingItems.filter((item) => item.type === ContextMenuOptionType.Git)
 
-	// Convert search results to queryItems format
-	const searchResultItems = dynamicSearchResults.map((result) => {
+	// Convert search results to queryItems format and group by workspace
+	const workspaceGroups = new Map<string, ContextMenuQueryItem[]>()
+
+	dynamicSearchResults.forEach((result) => {
 		// Ensure paths start with / for consistency
 		const formattedPath = result.path.startsWith("/") ? result.path : `/${result.path}`
 
@@ -265,18 +268,42 @@ export function getContextMenuOptions(
 		const displayPath = formattedPath
 		const displayName = result.label || getBasename(result.path)
 
-		// We don't need to escape spaces here because the insertMention function
-		// will handle that when the user selects a suggestion
+		// Extract workspace name from the result if it has one
+		const workspaceName = (result as any).workspaceName || "Default Workspace"
 
-		return {
+		const item = {
 			type: result.type === "folder" ? ContextMenuOptionType.Folder : ContextMenuOptionType.File,
 			value: formattedPath,
 			label: displayName,
 			description: displayPath,
 		}
+
+		if (!workspaceGroups.has(workspaceName)) {
+			workspaceGroups.set(workspaceName, [])
+		}
+		workspaceGroups.get(workspaceName)!.push(item)
 	})
 
-	const allItems = [...suggestions, ...openedFileMatches, ...searchResultItems, ...gitMatches]
+	// Create grouped search results with workspace headers
+	const groupedSearchResults: ContextMenuQueryItem[] = []
+	if (workspaceGroups.size > 1) {
+		// Only add workspace headers if there are multiple workspaces
+		Array.from(workspaceGroups.entries()).forEach(([workspaceName, items]) => {
+			groupedSearchResults.push({
+				type: ContextMenuOptionType.WorkspaceHeader,
+				label: `📁 ${workspaceName}`,
+				description: `Workspace: ${workspaceName}`,
+			})
+			groupedSearchResults.push(...items)
+		})
+	} else {
+		// Single workspace, no headers needed
+		Array.from(workspaceGroups.values()).forEach((items) => {
+			groupedSearchResults.push(...items)
+		})
+	}
+
+	const allItems = [...suggestions, ...openedFileMatches, ...groupedSearchResults, ...gitMatches]
 
 	// Remove duplicates - normalize paths by ensuring all have leading slashes
 	const seen = new Set()
