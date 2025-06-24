@@ -7,7 +7,7 @@ import { isBinaryFile } from "isbinaryfile"
 import { mentionRegexGlobal, unescapeSpaces } from "../../shared/context-mentions"
 
 import { getCommitInfo, getWorkingState } from "../../utils/git"
-import { getWorkspacePath } from "../../utils/path"
+import { getWorkspacePath, getWorkspaceForPath, getAllWorkspacePaths } from "../../utils/path"
 
 import { openFile } from "../../integrations/misc/open-file"
 import { extractTextFromFile } from "../../integrations/misc/extract-text"
@@ -24,19 +24,31 @@ export async function openMention(mention?: string): Promise<void> {
 		return
 	}
 
-	const cwd = getWorkspacePath()
-	if (!cwd) {
-		return
-	}
-
 	if (mention.startsWith("/")) {
 		// Slice off the leading slash and unescape any spaces in the path
 		const relPath = unescapeSpaces(mention.slice(1))
-		const absPath = path.resolve(cwd, relPath)
-		if (mention.endsWith("/")) {
-			vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(absPath))
+
+		// Try to find the file in any workspace
+		const workspaceFolder = getWorkspaceForPath(relPath)
+		if (workspaceFolder) {
+			const absPath = path.resolve(workspaceFolder.uri.fsPath, relPath)
+			if (mention.endsWith("/")) {
+				vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(absPath))
+			} else {
+				openFile(absPath)
+			}
 		} else {
-			openFile(absPath)
+			// Fallback to default workspace if not found in any workspace
+			const cwd = getWorkspacePath()
+			if (!cwd) {
+				return
+			}
+			const absPath = path.resolve(cwd, relPath)
+			if (mention.endsWith("/")) {
+				vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(absPath))
+			} else {
+				openFile(absPath)
+			}
 		}
 	} else if (mention === "problems") {
 		vscode.commands.executeCommand("workbench.actions.view.problems")
@@ -171,77 +183,114 @@ async function getFileOrFolderContent(
 	showRooIgnoredFiles: boolean = true,
 ): Promise<string> {
 	const unescapedPath = unescapeSpaces(mentionPath)
+
+	// First try the provided workspace
 	const absPath = path.resolve(cwd, unescapedPath)
 
 	try {
 		const stats = await fs.stat(absPath)
+		return await processFileOrFolder(stats, absPath, mentionPath, rooIgnoreController, showRooIgnoredFiles)
+	} catch (error) {
+		// If file not found in the provided workspace, search all workspaces
+		const allWorkspacePaths = getAllWorkspacePaths()
 
-		if (stats.isFile()) {
-			if (rooIgnoreController && !rooIgnoreController.validateAccess(absPath)) {
-				return `(File ${mentionPath} is ignored by .kilocodeignore)`
+		for (const workspacePath of allWorkspacePaths) {
+			// Skip the workspace we already tried
+			if (workspacePath === cwd) {
+				continue
 			}
+
+			const alternativeAbsPath = path.resolve(workspacePath, unescapedPath)
 			try {
-				const content = await extractTextFromFile(absPath)
-				return content
-			} catch (error) {
-				return `(Failed to read contents of ${mentionPath}): ${error.message}`
+				const stats = await fs.stat(alternativeAbsPath)
+				return await processFileOrFolder(
+					stats,
+					alternativeAbsPath,
+					mentionPath,
+					rooIgnoreController,
+					showRooIgnoredFiles,
+				)
+			} catch {
+				// Continue to next workspace
+				continue
 			}
-		} else if (stats.isDirectory()) {
-			const entries = await fs.readdir(absPath, { withFileTypes: true })
-			let folderContent = ""
-			const fileContentPromises: Promise<string | undefined>[] = []
-			const LOCK_SYMBOL = "🔒"
+		}
 
-			for (let index = 0; index < entries.length; index++) {
-				const entry = entries[index]
-				const isLast = index === entries.length - 1
-				const linePrefix = isLast ? "└── " : "├── "
-				const entryPath = path.join(absPath, entry.name)
+		// If not found in any workspace, throw the original error
+		throw new Error(`Failed to access path "${mentionPath}": ${error.message}`)
+	}
+}
 
-				let isIgnored = false
-				if (rooIgnoreController) {
-					isIgnored = !rooIgnoreController.validateAccess(entryPath)
-				}
+async function processFileOrFolder(
+	stats: any,
+	absPath: string,
+	mentionPath: string,
+	rooIgnoreController?: any,
+	showRooIgnoredFiles: boolean = true,
+): Promise<string> {
+	if (stats.isFile()) {
+		if (rooIgnoreController && !rooIgnoreController.validateAccess(absPath)) {
+			return `(File ${mentionPath} is ignored by .kilocodeignore)`
+		}
+		try {
+			const content = await extractTextFromFile(absPath)
+			return content
+		} catch (error) {
+			return `(Failed to read contents of ${mentionPath}): ${error.message}`
+		}
+	} else if (stats.isDirectory()) {
+		const entries = await fs.readdir(absPath, { withFileTypes: true })
+		let folderContent = ""
+		const fileContentPromises: Promise<string | undefined>[] = []
+		const LOCK_SYMBOL = "🔒"
 
-				if (isIgnored && !showRooIgnoredFiles) {
-					continue
-				}
+		for (let index = 0; index < entries.length; index++) {
+			const entry = entries[index]
+			const isLast = index === entries.length - 1
+			const linePrefix = isLast ? "└── " : "├── "
+			const entryPath = path.join(absPath, entry.name)
 
-				const displayName = isIgnored ? `${LOCK_SYMBOL} ${entry.name}` : entry.name
+			let isIgnored = false
+			if (rooIgnoreController) {
+				isIgnored = !rooIgnoreController.validateAccess(entryPath)
+			}
 
-				if (entry.isFile()) {
-					folderContent += `${linePrefix}${displayName}\n`
-					if (!isIgnored) {
-						const filePath = path.join(mentionPath, entry.name)
-						const absoluteFilePath = path.resolve(absPath, entry.name)
-						fileContentPromises.push(
-							(async () => {
-								try {
-									const isBinary = await isBinaryFile(absoluteFilePath).catch(() => false)
-									if (isBinary) {
-										return undefined
-									}
-									const content = await extractTextFromFile(absoluteFilePath)
-									return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
-								} catch (error) {
+			if (isIgnored && !showRooIgnoredFiles) {
+				continue
+			}
+
+			const displayName = isIgnored ? `${LOCK_SYMBOL} ${entry.name}` : entry.name
+
+			if (entry.isFile()) {
+				folderContent += `${linePrefix}${displayName}\n`
+				if (!isIgnored) {
+					const filePath = path.join(mentionPath, entry.name)
+					const absoluteFilePath = path.resolve(absPath, entry.name)
+					fileContentPromises.push(
+						(async () => {
+							try {
+								const isBinary = await isBinaryFile(absoluteFilePath).catch(() => false)
+								if (isBinary) {
 									return undefined
 								}
-							})(),
-						)
-					}
-				} else if (entry.isDirectory()) {
-					folderContent += `${linePrefix}${displayName}/\n`
-				} else {
-					folderContent += `${linePrefix}${displayName}\n`
+								const content = await extractTextFromFile(absoluteFilePath)
+								return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
+							} catch (error) {
+								return undefined
+							}
+						})(),
+					)
 				}
+			} else if (entry.isDirectory()) {
+				folderContent += `${linePrefix}${displayName}/\n`
+			} else {
+				folderContent += `${linePrefix}${displayName}\n`
 			}
-			const fileContents = (await Promise.all(fileContentPromises)).filter((content) => content)
-			return `${folderContent}\n${fileContents.join("\n\n")}`.trim()
-		} else {
-			return `(Failed to read contents of ${mentionPath})`
 		}
-	} catch (error) {
-		throw new Error(`Failed to access path "${mentionPath}": ${error.message}`)
+		const fileContents = (await Promise.all(fileContentPromises)).filter((content) => content)
+		return `${folderContent}\n${fileContents.join("\n\n")}`.trim()
+	} else {
+		return `(Failed to read contents of ${mentionPath})`
 	}
 }
 
