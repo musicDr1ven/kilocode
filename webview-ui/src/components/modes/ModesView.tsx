@@ -1296,7 +1296,7 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 				</div>
 			)}
 			{/* kilocode_change */}
-			<BottomControls hideSelectionComponents={true} />
+			<BottomControls />
 		</Tab>
 	)
 }
