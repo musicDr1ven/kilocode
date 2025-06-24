@@ -21,8 +21,8 @@ export function insertMention(
 	position: number,
 	value: string,
 ): { newValue: string; mentionIndex: number } {
-	// Handle slash command
-	if (text.startsWith("/")) {
+	// Handle slash command mode selection (when there's no @ symbol)
+	if (text.startsWith("/") && !text.includes("@")) {
 		return {
 			newValue: value,
 			mentionIndex: 0,
