@@ -56,46 +56,40 @@ Updated WorkspaceTracker with critical design refinement:
 
 **Critical Design Decision**: Workspace prefixing only occurs in UI contexts (@ mentions dropdown), not in core file tracking, to maintain downstream tool compatibility.
 
-## Implementation Phases (Remaining)
+### ✅ Phase 3: @ Mention System (COMPLETED - 2 commits)
 
-### Phase 3: @ Mention System (2 behavioral commits)
+#### ✅ Step 3.1: Cross-Workspace File Resolution (COMPLETED)
 
-#### Step 3.1: Workspace-Prefixed Path Support
-
-**Goal**: Update @ mention parsing to handle workspace-prefixed paths
+**Commit**: `feat: enable cross-workspace @ mention file resolution`
 
 **Changes to `src/core/mentions/index.ts`**:
 
-- Update `parseMentions()` to detect workspace-prefixed paths (`workspace1:/path/to/file`)
-- Use `resolvePathInWorkspace()` for path resolution
-- Handle workspace context in file content retrieval
+- Updated `getFileOrFolderContent()` to search across all workspaces when file not found in default workspace
+- Updated `openMention()` to use `getWorkspaceForPath()` to find files in any workspace
+- Extracted `processFileOrFolder()` helper function for code reuse
+- **Key Design Decision**: @ mentions work transparently across workspaces without requiring user prefixing
 
-**Commit**: `feat: support workspace-prefixed paths in @ mentions`
-
-#### Step 3.2: UI Enhancements
-
-**Goal**: Add workspace headers to @ mention dropdown
-
-**Changes to `webview-ui/src/utils/context-mentions.ts`**:
-
-- Add `WorkspaceHeader` to `ContextMenuOptionType` enum
-- Update `getContextMenuOptions()` to group files by workspace
-- Add workspace headers (📁 workspace name) in dropdown
-- Handle workspace context in file options
+#### ✅ Step 3.2: UI Enhancements (COMPLETED)
 
 **Commit**: `feat: add workspace headers to @ mention dropdown`
 
-### Phase 4: Environment Details (1 enhancement commit)
+**Changes to `webview-ui/src/utils/context-mentions.ts`**:
 
-**Goal**: Include files from all workspaces in task context.
+- Added `WorkspaceHeader` to `ContextMenuOptionType` enum
+- Updated `getContextMenuOptions()` to group files by workspace with headers
+- Added workspace headers (📁 workspace name) in dropdown for multi-workspace scenarios
+- Handle workspace context in file options
+
+### ✅ Phase 4: Environment Details (COMPLETED)
+
+**Commit**: `feat: include all workspaces in environment details`
 
 **Changes to `src/core/environment/getEnvironmentDetails.ts`**:
 
-- Use `getAllWorkspacePaths()` instead of single workspace
-- For multi-workspace: show each workspace as separate section
-- Distribute file limits across workspaces
-
-**Commit**: `feat: include all workspaces in environment details`
+- Added `getAllWorkspacePaths()` import and multi-workspace logic
+- For single workspace: maintains existing behavior exactly
+- For multi-workspace: shows each workspace as separate section with workspace name headers
+- Distributes file limits across workspaces proportionally
 
 ## Success Criteria
 
