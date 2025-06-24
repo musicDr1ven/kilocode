@@ -30,7 +30,7 @@ import {
 	McpToolCallResponse,
 } from "../../shared/mcp"
 import { fileExistsAtPath } from "../../utils/fs"
-import { arePathsEqual, getWorkspacePath } from "../../utils/path"
+import { arePathsEqual, getPrimaryWorkspaceFolder } from "../../utils/path"
 import { injectVariables } from "../../utils/config"
 
 export type McpConnection = {
@@ -329,8 +329,7 @@ export class McpHub {
 			return
 		}
 
-		const workspacePath = getWorkspacePath()
-		const workspaceFolder = vscode.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === workspacePath)
+		const workspaceFolder = getPrimaryWorkspaceFolder()
 		if (!workspaceFolder) {
 			return
 		}
@@ -538,8 +537,7 @@ export class McpHub {
 			return null
 		}
 
-		const workspacePath = getWorkspacePath()
-		const workspaceFolder = vscode.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === workspacePath)
+		const workspaceFolder = getPrimaryWorkspaceFolder()
 		if (!workspaceFolder) {
 			return null
 		}

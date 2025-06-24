@@ -36,7 +36,7 @@ import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { getLmStudioModels } from "../../api/providers/lm-studio"
 import { openMention } from "../mentions"
 import { TelemetrySetting } from "../../shared/TelemetrySetting"
-import { getWorkspacePath } from "../../utils/path"
+import { getPrimaryWorkspaceFolder } from "../../utils/path"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
 import { GetModelsOptions } from "../../shared/api"
@@ -528,10 +528,7 @@ export const webviewMessageHandler = async (
 				return
 			}
 
-			const workspacePath = getWorkspacePath()
-			const workspaceFolder = vscode.workspace.workspaceFolders?.find(
-				(folder) => folder.uri.fsPath === workspacePath,
-			)
+			const workspaceFolder = getPrimaryWorkspaceFolder()
 			if (!workspaceFolder) {
 				vscode.window.showErrorMessage(t("common:errors.no_workspace"))
 				return

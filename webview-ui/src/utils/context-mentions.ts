@@ -98,7 +98,7 @@ export enum ContextMenuOptionType {
 	NoResults = "noResults",
 	Mode = "mode", // Add mode type
 	Image = "image", // kilocode_change
-	WorkspaceHeader = "workspaceHeader", // Add workspace header type
+	workspace = "workspace", // Add workspace header type
 }
 
 export interface ContextMenuQueryItem {
@@ -290,7 +290,7 @@ export function getContextMenuOptions(
 		// Only add workspace headers if there are multiple workspaces
 		Array.from(workspaceGroups.entries()).forEach(([workspaceName, items]) => {
 			groupedSearchResults.push({
-				type: ContextMenuOptionType.WorkspaceHeader,
+				type: ContextMenuOptionType.workspace,
 				label: `📁 ${workspaceName}`,
 				description: `Workspace: ${workspaceName}`,
 			})

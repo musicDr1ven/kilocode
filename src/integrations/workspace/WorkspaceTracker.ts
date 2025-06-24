@@ -4,7 +4,7 @@ import * as path from "path"
 import { listFiles } from "../../services/glob/list-files"
 import { ClineProvider } from "../../core/webview/ClineProvider"
 import { toRelativePath, getWorkspacePath, getAllWorkspacePaths } from "../../utils/path"
-import { WorkspaceInfo, WorkspaceFolder } from "../../shared/ExtensionMessage"
+import { WorkspaceFolder } from "../../shared/ExtensionMessage"
 
 const MAX_INITIAL_FILES = 1_000
 
@@ -144,18 +144,24 @@ class WorkspaceTracker {
 
 			const allWorkspaces = this.allWorkspacePaths
 			let filePaths: string[]
-			let workspaceInfo: WorkspaceInfo | undefined = undefined
+			let workspaceFolders: WorkspaceFolder[] | undefined = undefined
 
 			if (allWorkspaces.length <= 1) {
 				// Single workspace - use existing behavior
 				filePaths = Array.from(this.filePaths).map((file) => toRelativePath(file, this.cwd))
-				workspaceInfo = { isMultiRoot: false }
+				// For single workspace, we can omit workspaceFolders or provide a single entry
+				const vscodeWorkspaceFolders = vscode.workspace.workspaceFolders || []
+				if (vscodeWorkspaceFolders.length > 0) {
+					workspaceFolders = [
+						{ name: vscodeWorkspaceFolders[0].name, path: vscodeWorkspaceFolders[0].uri.fsPath },
+					]
+				}
 			} else {
 				// Multi-workspace - keep paths relative to their respective workspaces
-				// The webview will use workspaceInfo to understand the context
-				const workspaceFolders = vscode.workspace.workspaceFolders || []
+				// The webview will determine it's multi-root by checking workspaceFolders.length > 1
+				const vscodeWorkspaceFolders = vscode.workspace.workspaceFolders || []
 				filePaths = Array.from(this.filePaths).map((file) => {
-					const workspace = workspaceFolders.find((folder) => file.startsWith(folder.uri.fsPath))
+					const workspace = vscodeWorkspaceFolders.find((folder) => file.startsWith(folder.uri.fsPath))
 					if (workspace) {
 						return toRelativePath(file, workspace.uri.fsPath)
 					}
@@ -163,20 +169,17 @@ class WorkspaceTracker {
 					return toRelativePath(file, this.cwd)
 				})
 
-				// Include workspace folder information for the webview to understand context
-				workspaceInfo = {
-					isMultiRoot: true,
-					workspaceFolders: workspaceFolders.map(
-						(folder): WorkspaceFolder => ({ name: folder.name, path: folder.uri.fsPath }),
-					),
-				}
+				// Include workspace folder information for the webview
+				workspaceFolders = vscodeWorkspaceFolders.map(
+					(folder): WorkspaceFolder => ({ name: folder.name, path: folder.uri.fsPath }),
+				)
 			}
 
 			this.providerRef.deref()?.postMessageToWebview({
 				type: "workspaceUpdated",
 				filePaths,
 				openedTabs: this.getOpenedTabsInfo(),
-				workspaceInfo,
+				workspaceFolders,
 			})
 			this.updateTimer = null
 		}, 300) // Debounce for 300ms

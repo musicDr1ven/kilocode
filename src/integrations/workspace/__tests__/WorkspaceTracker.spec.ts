@@ -16,6 +16,12 @@ let registeredTabChangeCallback: (() => Promise<void>) | null = null
 // Mock workspace path
 vitest.mock("../../../utils/path", () => ({
 	getWorkspacePath: vitest.fn().mockReturnValue("/test/workspace"),
+	getAllWorkspacePaths: vitest.fn().mockReturnValue(["/test/workspace"]),
+	getPrimaryWorkspaceFolder: vitest.fn().mockReturnValue({
+		uri: { fsPath: "/test/workspace" },
+		name: "test-workspace",
+		index: 0,
+	}),
 	toRelativePath: vitest.fn((path, cwd) => {
 		// Handle both Windows and POSIX paths by using path.relative
 		const relativePath = require("path").relative(cwd, path)
@@ -102,6 +108,7 @@ describe("WorkspaceTracker", () => {
 			type: "workspaceUpdated",
 			filePaths: expect.arrayContaining(["file1.ts", "file2.ts"]),
 			openedTabs: [],
+			workspaceFolders: [{ name: "test", path: "/test/workspace" }],
 		})
 		expect((mockProvider.postMessageToWebview as Mock).mock.calls[0][0].filePaths).toHaveLength(2)
 	})
@@ -116,6 +123,7 @@ describe("WorkspaceTracker", () => {
 			type: "workspaceUpdated",
 			filePaths: ["newfile.ts"],
 			openedTabs: [],
+			workspaceFolders: [{ name: "test", path: "/test/workspace" }],
 		})
 	})
 
@@ -135,6 +143,7 @@ describe("WorkspaceTracker", () => {
 			type: "workspaceUpdated",
 			filePaths: [],
 			openedTabs: [],
+			workspaceFolders: [{ name: "test", path: "/test/workspace" }],
 		})
 	})
 
@@ -150,6 +159,7 @@ describe("WorkspaceTracker", () => {
 			type: "workspaceUpdated",
 			filePaths: expect.arrayContaining(["newdir"]),
 			openedTabs: [],
+			workspaceFolders: [{ name: "test", path: "/test/workspace" }],
 		})
 		const lastCall = (mockProvider.postMessageToWebview as Mock).mock.calls.slice(-1)[0]
 		expect(lastCall[0].filePaths).toHaveLength(1)
@@ -171,6 +181,7 @@ describe("WorkspaceTracker", () => {
 			type: "workspaceUpdated",
 			filePaths: expect.arrayContaining(expectedFiles),
 			openedTabs: [],
+			workspaceFolders: [{ name: "test", path: "/test/workspace" }],
 		})
 		expect(calls[0][0].filePaths).toHaveLength(1000)
 

@@ -142,3 +142,21 @@ export const resolvePathInWorkspace = (relativePath: string, workspaceName?: str
 	// Default to first workspace for backward compatibility
 	return path.resolve(workspaceFolders[0].uri.fsPath, relativePath)
 }
+
+/**
+ * Gets the primary workspace folder object for accessing .kilocode configuration,
+ * rules, workflows, and other project-specific resources.
+ *
+ * This function returns the WorkspaceFolder that corresponds to the primary workspace path,
+ * which is determined by getWorkspacePath() - typically the first workspace or the one
+ * containing the currently active file.
+ *
+ * @returns The primary WorkspaceFolder object, or undefined if no workspace is open
+ */
+export const getPrimaryWorkspaceFolder = (): vscode.WorkspaceFolder | undefined => {
+	const workspacePath = getWorkspacePath()
+	if (!workspacePath) {
+		return undefined
+	}
+	return vscode.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === workspacePath)
+}

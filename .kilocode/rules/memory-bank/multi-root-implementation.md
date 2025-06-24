@@ -75,7 +75,7 @@ Updated WorkspaceTracker with critical design refinement:
 
 **Changes to `webview-ui/src/utils/context-mentions.ts`**:
 
-- Added `WorkspaceHeader` to `ContextMenuOptionType` enum
+- Added `workspace` to `ContextMenuOptionType` enum
 - Updated `getContextMenuOptions()` to group files by workspace with headers
 - Added workspace headers (📁 workspace name) in dropdown for multi-workspace scenarios
 - Handle workspace context in file options
