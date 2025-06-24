@@ -160,6 +160,19 @@ export interface ExtensionMessage {
 	localRules?: ClineRulesToggles
 	globalWorkflows?: ClineRulesToggles
 	localWorkflows?: ClineRulesToggles
+	// Multi-root workspace support
+	workspaceInfo?: WorkspaceInfo
+}
+
+// Multi-root workspace type definitions
+export interface WorkspaceInfo {
+	isMultiRoot: boolean
+	workspaceFolders?: WorkspaceFolder[]
+}
+
+export interface WorkspaceFolder {
+	name: string
+	path: string
 }
 
 export type ExtensionState = Pick<

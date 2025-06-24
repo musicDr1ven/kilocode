@@ -3,7 +3,8 @@ import * as path from "path"
 
 import { listFiles } from "../../services/glob/list-files"
 import { ClineProvider } from "../../core/webview/ClineProvider"
-import { toRelativePath, getWorkspacePath } from "../../utils/path"
+import { toRelativePath, getWorkspacePath, getAllWorkspacePaths } from "../../utils/path"
+import { WorkspaceInfo, WorkspaceFolder } from "../../shared/ExtensionMessage"
 
 const MAX_INITIAL_FILES = 1_000
 
@@ -19,6 +20,10 @@ class WorkspaceTracker {
 	get cwd() {
 		return getWorkspacePath()
 	}
+
+	get allWorkspacePaths() {
+		return getAllWorkspacePaths()
+	}
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
 		this.registerListeners()
@@ -30,11 +35,30 @@ class WorkspaceTracker {
 			return
 		}
 		const tempCwd = this.cwd
-		const [files, _] = await listFiles(tempCwd, true, MAX_INITIAL_FILES)
-		if (this.prevWorkSpacePath !== tempCwd) {
-			return
+		const allWorkspaces = this.allWorkspacePaths
+
+		if (allWorkspaces.length <= 1) {
+			// Single workspace - use existing behavior
+			const [files, _] = await listFiles(tempCwd, true, MAX_INITIAL_FILES)
+			if (this.prevWorkSpacePath !== tempCwd) {
+				return
+			}
+			files.slice(0, MAX_INITIAL_FILES).forEach((file) => this.filePaths.add(this.normalizeFilePath(file)))
+		} else {
+			// Multi-workspace - distribute file limit across workspaces
+			const filesPerWorkspace = Math.ceil(MAX_INITIAL_FILES / allWorkspaces.length)
+			for (const workspacePath of allWorkspaces) {
+				try {
+					const [files, _] = await listFiles(workspacePath, true, filesPerWorkspace)
+					files.slice(0, filesPerWorkspace).forEach((file) => {
+						const absolutePath = path.resolve(workspacePath, file)
+						this.filePaths.add(this.normalizeFilePath(absolutePath))
+					})
+				} catch (error) {
+					console.error(`Error listing files for workspace ${workspacePath}:`, error)
+				}
+			}
 		}
-		files.slice(0, MAX_INITIAL_FILES).forEach((file) => this.filePaths.add(this.normalizeFilePath(file)))
 		this.workspaceDidUpdate()
 	}
 
@@ -118,11 +142,41 @@ class WorkspaceTracker {
 				return
 			}
 
-			const relativeFilePaths = Array.from(this.filePaths).map((file) => toRelativePath(file, this.cwd))
+			const allWorkspaces = this.allWorkspacePaths
+			let filePaths: string[]
+			let workspaceInfo: WorkspaceInfo | undefined = undefined
+
+			if (allWorkspaces.length <= 1) {
+				// Single workspace - use existing behavior
+				filePaths = Array.from(this.filePaths).map((file) => toRelativePath(file, this.cwd))
+				workspaceInfo = { isMultiRoot: false }
+			} else {
+				// Multi-workspace - keep paths relative to their respective workspaces
+				// The webview will use workspaceInfo to understand the context
+				const workspaceFolders = vscode.workspace.workspaceFolders || []
+				filePaths = Array.from(this.filePaths).map((file) => {
+					const workspace = workspaceFolders.find((folder) => file.startsWith(folder.uri.fsPath))
+					if (workspace) {
+						return toRelativePath(file, workspace.uri.fsPath)
+					}
+					// Fallback to relative to primary workspace
+					return toRelativePath(file, this.cwd)
+				})
+
+				// Include workspace folder information for the webview to understand context
+				workspaceInfo = {
+					isMultiRoot: true,
+					workspaceFolders: workspaceFolders.map(
+						(folder): WorkspaceFolder => ({ name: folder.name, path: folder.uri.fsPath }),
+					),
+				}
+			}
+
 			this.providerRef.deref()?.postMessageToWebview({
 				type: "workspaceUpdated",
-				filePaths: relativeFilePaths,
+				filePaths,
 				openedTabs: this.getOpenedTabsInfo(),
+				workspaceInfo,
 			})
 			this.updateTimer = null
 		}, 300) // Debounce for 300ms
