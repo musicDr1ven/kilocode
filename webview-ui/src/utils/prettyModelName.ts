@@ -4,23 +4,19 @@ export const prettyModelName = (modelId: string): string => {
 	}
 	const [mainId, tag] = modelId.split(":")
 
-	// Isolate the model's name (the part after the slash)
-	// Fallback to the full mainId if no slash is present
+	const projectName = mainId.includes("/") ? mainId.split("/")[0] : ""
 	const modelName = mainId.includes("/") ? mainId.split("/")[1] : mainId
 
 	// Capitalize each word and join with spaces
+	const formattedProject = projectName ? projectName.charAt(0).toUpperCase() + projectName.slice(1) : ""
+
 	const formattedName = modelName
 		.split("-")
 		.filter(Boolean)
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ")
 
-	//If a tag exists, format it and append it to the name.
-	if (tag) {
-		const formattedTag = `(${tag.charAt(0).toUpperCase() + tag.slice(1)})`
-		return `${formattedName} ${formattedTag}`
-	}
+	const formattedTag = tag ? `(${tag.charAt(0).toUpperCase() + tag.slice(1)})` : ""
 
-	// Otherwise, return only the formatted name.
-	return formattedName
+	return [[formattedProject, formattedName].filter(Boolean).join(" / "), formattedTag].join(" ")
 }

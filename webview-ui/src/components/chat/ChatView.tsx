@@ -1605,7 +1605,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				inputValue={inputValue}
 				setInputValue={setInputValue}
 				sendingDisabled={sendingDisabled || isProfileDisabled}
-				selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"}
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
@@ -1621,7 +1620,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
 			/>
-			<BottomControls />
+			<BottomControls selectApiConfigDisabled={sendingDisabled && clineAsk !== "api_req_failed"} />
 
 			{/* kilocode_change: disable {isProfileDisabled && (
 				<div className="px-3">

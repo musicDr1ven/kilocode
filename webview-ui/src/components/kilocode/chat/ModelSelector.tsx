@@ -4,10 +4,9 @@ import type { ProviderSettings } from "@roo-code/types"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
-import { useVSCodeTheme } from "../../kilocode/hooks/useVSCodeTheme"
-import { useProviderModels } from "../ui/hooks/useProviderModels"
-import { prettyModelName } from "../../utils/prettyModelName"
-import { getModelIdKey, getSelectedModelId } from "../ui/hooks/useSelectedModel"
+import { useProviderModels } from "../../ui/hooks/useProviderModels"
+import { prettyModelName } from "../../../utils/prettyModelName"
+import { getModelIdKey, getSelectedModelId } from "../../ui/hooks/useSelectedModel"
 
 interface ModelSelectorProps {
 	currentApiConfigName?: string
@@ -17,7 +16,6 @@ interface ModelSelectorProps {
 
 export const ModelSelector = ({ currentApiConfigName, apiConfiguration, fallbackText }: ModelSelectorProps) => {
 	const { t } = useAppTranslation()
-	const currentTheme = useVSCodeTheme()
 	const { provider, providerModels, providerDefaultModel, isLoading, isError } = useProviderModels(apiConfiguration)
 	const selectedModelId = getSelectedModelId({
 		provider,
@@ -72,12 +70,10 @@ export const ModelSelector = ({ currentApiConfigName, apiConfiguration, fallback
 			options={options}
 			onChange={onChange}
 			contentClassName="max-h-[300px] overflow-y-auto"
-			triggerClassName={cn("w-full text-ellipsis overflow-hidden", {
-				"bg-[#1e1e1e] border-[#333333] hover:bg-[#2d2d2d]":
-					currentTheme === "vscode-dark" || currentTheme === "vscode-high-contrast",
-				"bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] hover:bg-[var(--vscode-input-hoverBackground)]":
-					currentTheme === "vscode-light",
-			})}
+			triggerClassName={cn(
+				"w-full text-ellipsis overflow-hidden",
+				"bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] hover:bg-[var(--color-vscode-list-hoverBackground)]",
+			)}
 			itemClassName="group"
 		/>
 	)
