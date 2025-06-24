@@ -528,7 +528,14 @@ export const webviewMessageHandler = async (
 				return
 			}
 
-			const workspaceFolder = vscode.workspace.workspaceFolders[0]
+			const workspacePath = getWorkspacePath()
+			const workspaceFolder = vscode.workspace.workspaceFolders?.find(
+				(folder) => folder.uri.fsPath === workspacePath,
+			)
+			if (!workspaceFolder) {
+				vscode.window.showErrorMessage(t("common:errors.no_workspace"))
+				return
+			}
 			const rooDir = path.join(workspaceFolder.uri.fsPath, ".kilocode")
 			const mcpPath = path.join(rooDir, "mcp.json")
 			const rootMcpPath = path.join(workspaceFolder.uri.fsPath, ".mcp.json")

@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { getWorkspacePath } from "./path"
 
 /**
  * Checks for a file in .kilocode/launchPrompt.md and runs it immediately if it exists.
@@ -8,8 +9,12 @@ export async function checkAndRunAutoLaunchingTask(context: vscode.ExtensionCont
 		return
 	}
 
-	const workspaceFolderUri = vscode.workspace.workspaceFolders[0].uri
-	const promptFilePath = vscode.Uri.joinPath(workspaceFolderUri, ".kilocode", "launchPrompt.md")
+	const workspacePath = getWorkspacePath()
+	const workspaceFolder = vscode.workspace.workspaceFolders?.find((folder) => folder.uri.fsPath === workspacePath)
+	if (!workspaceFolder) {
+		return
+	}
+	const promptFilePath = vscode.Uri.joinPath(workspaceFolder.uri, ".kilocode", "launchPrompt.md")
 
 	try {
 		const fileContent = await vscode.workspace.fs.readFile(promptFilePath)
