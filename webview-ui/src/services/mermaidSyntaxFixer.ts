@@ -114,20 +114,15 @@ export class MermaidSyntaxFixer {
 				break
 			}
 
-			try {
-				llmAttempts++
-				const fixedCode = await this.requestLLMFix(currentCode, lastError)
+			llmAttempts++
+			const fixedCode = await this.requestLLMFix(currentCode, lastError)
 
-				if (!fixedCode) {
-					finalError = "LLM failed to provide a fix"
-					break
-				}
-
-				currentCode = fixedCode
-			} catch (requestError) {
-				finalError = requestError instanceof Error ? requestError.message : "Fix request failed"
+			if (!fixedCode) {
+				finalError = "LLM failed to provide a fix"
 				break
 			}
+
+			currentCode = fixedCode
 		}
 
 		return {
