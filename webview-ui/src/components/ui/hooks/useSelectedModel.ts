@@ -148,7 +148,7 @@ export const getSelectedModelId = ({
 				: defaultModelId
 		}
 		default: {
-			return (apiConfiguration[modelIdKey] as string) ?? defaultModelId
+			return (apiConfiguration?.[modelIdKey] as string) ?? defaultModelId
 		}
 	}
 }
